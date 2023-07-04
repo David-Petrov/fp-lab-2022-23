@@ -120,10 +120,10 @@ infixr 0 $
 -- EXAMPLES
 -- >>> const 5 6
 -- 5
--- >>> applyTwice (const 42) 1337
--- 42
+-- >>> applyTwice (const 48) 1337
+-- 48
 const :: a -> b -> a
-const = undefined
+const a _ = a
 
 -- EXERCISE
 -- Compose two functions, very useful very often
@@ -134,17 +134,18 @@ const = undefined
 -- >>> let f = compose (*5) (+5) in f 4
 -- 45
 compose :: (b -> c) -> (a -> b) -> a -> c
-compose = undefined
+compose f g a = f $ g a
 
 -- EXERCISE
 -- Iterate a function f n times over a base value x.
 -- EXAMPLES
 -- >>> iterateN (+1) 1 10
 -- 11
--- >>> iterateN (*2) 1 10
--- 1024
+-- >>> iterateN (*2) 1 11
+-- 2048
 iterateN :: (a -> a) -> a -> Integer -> a
-iterateN = undefined
+iterateN f x 0 = x
+iterateN f x n = f $ iterateN f x $ n - 1
 
 -- EXERCISE
 -- Swap the two elements of a tuple
@@ -152,33 +153,33 @@ iterateN = undefined
 -- >>> swap $ MkTuple 42 69
 -- MkTuple 69 42
 swap :: Tuple a b -> Tuple b a
-swap = undefined
+swap (MkTuple x y) = MkTuple y x
 
 -- EXERCISE
 -- Apply a function to only the first component of a tuple
 -- EXAMPLES
--- >>> first (*2) $ MkTuple 21 1337
--- MkTuple 42 1337
+-- >>> first (*2) $ MkTuple 20 1337
+-- MkTuple 40 1337
 first :: (a -> b) -> Tuple a c -> Tuple b c
-first = undefined
+first f (MkTuple a c) = MkTuple (f a) c
 
 -- EXERCISE
 -- Convert a function operating on a tuple, to one that takes two arguments.
 -- Called Curry after Haskell Curry - inventor of lambda calculus.
 -- EXAMPLES
--- >>> curryTuple (\(MkTuple x y) -> x * y) 23 3
+-- >>> curry (\(MkTuple x y) -> x * y) 23 3
 -- 69
 curry :: (Tuple a b -> c) -> a -> b -> c
-curry = undefined
+curry f a b = f $ MkTuple a b
 
 -- EXERCISE
 -- Convert a function operating on a tuple, to one that takes two arguments.
 -- Called Curry after Haskell Curry - inventor of lambda calculus.
 -- EXAMPLES
--- >>> uncurryTuple (\x y -> x + y) $ MkTuple 23 46
+-- >>> uncurry (\x y -> x + y) $ MkTuple 23 46
 -- 69
 uncurry :: (a -> b -> c) -> Tuple a b -> c
-uncurry = undefined
+uncurry f (MkTuple a b) = f a b
 
 -- EXERCISE
 -- > p `on` f
@@ -190,15 +191,19 @@ sumTuple :: Tuple Int Int -> Int
 sumTuple (MkTuple x y) = x + y
 -- >>> let maxOnSum = max `on` sumTuple in maxOnSum (MkTuple 20 39) (MkTuple 12 34)
 -- 59
+
 -- You can look at the `fight` from the solutions from last time for good actual usage of the function
 on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
-on = undefined
+on bbc ab x y = bbc (ab x) (ab y)
 
 -- EXERCISE
 -- Apply two different functions to the two different arguments of a tuple
 -- Think about what the type should be.
 -- mapTuple :: ???
 -- mapTuple = undefined
+
+mapTuple :: (a -> c) -> (b -> d) -> Tuple a b -> Tuple c d
+mapTuple f1 f2 (MkTuple a b) = MkTuple (f1 a) (f2 b)
 
 data Nat
   = Zero

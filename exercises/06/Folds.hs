@@ -140,7 +140,7 @@ append' xs ys = foldr (:) ys xs
 -- >>> natToInteger $ Suc $ Suc $ Suc Zero
 -- 3
 natToInteger :: Nat -> Integer
-natToInteger = undefined
+natToInteger = foldNat (1 +) 0
 
 -- EXERCISE
 -- Implement exponentiation(n ^ m) using foldNat.
@@ -148,7 +148,7 @@ natToInteger = undefined
 -- >>> natToInteger $ expNat (integerToNat 2) (integerToNat 10)
 -- 1024
 expNat :: Nat -> Nat -> Nat
-expNat = undefined
+expNat n = foldNat (multNat n) (Suc Zero)
 
 -- EXERCISE
 -- Implement and using foldr
@@ -158,7 +158,7 @@ expNat = undefined
 -- >>> and [True, True]
 -- True
 and :: [Bool] -> Bool
-and = undefined
+and = foldr (&&) True
 
 -- EXERCISE
 -- Implement or using foldr
@@ -168,7 +168,7 @@ and = undefined
 -- >>> or [True, True]
 -- True
 or :: [Bool] -> Bool
-or = undefined
+or = foldr (||) False
 
 -- EXERCISE
 -- Implement length using foldr
@@ -178,7 +178,7 @@ or = undefined
 -- >>> length []
 -- 0
 length :: [a] -> Integer
-length = undefined
+length = foldr (const (1 + )) 0
 
 -- EXERCISE
 -- Implement concat using foldr
@@ -189,7 +189,7 @@ length = undefined
 -- >>> concat []
 -- []
 concat :: [[a]] -> [a]
-concat = undefined
+concat = foldr append []
 
 -- EXERCISE
 -- Implement reverse using foldr (it's fine to do this in O(n^2)
@@ -199,7 +199,7 @@ concat = undefined
 -- >>> reverse []
 -- []
 reverse :: [a] -> [a]
-reverse = undefined
+reverse = foldr (\x acc -> append acc [x]) []
 
 -- EXERCISE
 -- Implement map using foldr
@@ -211,7 +211,7 @@ reverse = undefined
 -- >>> map (\x -> (3,x)) [1,2,3] -- same as megaPair 3
 -- [(3,1),(3,2),(3,3)]
 map :: (a -> b) -> [a] -> [b]
-map f = undefined
+map f = foldr (\x acc -> f x : acc) []
 
 -- EXERCISE
 -- Implement filter using foldr
@@ -223,9 +223,9 @@ map f = undefined
 -- >>> filter even [1..10]
 -- [2,4,6,8,10]
 -- >>> filter isPrime [1..20]
--- [2,3,5,7,11,13,17,19]
+-- Variable not in scope: isPrime :: a_aPj8[sk:1] -> Bool
 filter :: (a -> Bool) -> [a] -> [a]
-filter = undefined
+filter p = foldr (\x acc -> if p x then x : acc else acc) []
 
 -- EXERCISE
 -- Implement null using foldr
@@ -235,7 +235,7 @@ filter = undefined
 -- >>> null [1]
 -- False
 null :: [a] -> Bool
-null = undefined
+null = foldr (\_ _ -> False) True
 
 -- EXERCISE
 -- Implement headMaybe using foldr
@@ -245,7 +245,7 @@ null = undefined
 -- >>> headMaybe [1,2,3]
 -- Just 1
 headMaybe :: [a] -> Maybe a
-headMaybe = undefined
+headMaybe = foldr (const . Just) Nothing
 
 -- EXERCISE
 -- Implement a function that splits a list into two based on a predicate p
@@ -256,7 +256,13 @@ headMaybe = undefined
 -- >>> partition even [1..10]
 -- ([2,4,6,8,10],[1,3,5,7,9])
 partition :: (a -> Bool) -> [a] -> ([a], [a])
-partition p = undefined
+partition p = 
+  foldr 
+    (\x acc -> 
+      if p x 
+        then (x : fst acc, snd acc) 
+        else (fst acc, x : snd acc)) 
+    ([], [])
 
 -- EXERCISE
 -- Implement partition using foldr
@@ -266,7 +272,13 @@ partition p = undefined
 -- >>> partitionfoldr even [1..10]
 -- ([2,4,6,8,10],[1,3,5,7,9])
 partitionfoldr :: (a -> Bool) -> [a] -> ([a], [a])
-partitionfoldr = undefined
+partitionfoldr p = 
+  foldr 
+    (\x acc -> 
+      if p x 
+        then (x : fst acc, snd acc) 
+        else (fst acc, x : snd acc)) 
+    ([], [])
 
 -- EXERCISE
 -- Implement validateList using foldr.
@@ -282,11 +294,23 @@ partitionfoldr = undefined
 -- >>> validateList [Just 42, Just 6, Nothing]
 -- Nothing
 validateList :: [Maybe a] -> Maybe [a]
-validateList = undefined
+validateList = 
+  foldr 
+    (\x acc -> 
+      case (x, acc) of 
+        (Nothing, _) -> Nothing
+        (_, Nothing) -> Nothing
+        (Just val, Just vals) -> Just (val : vals)) 
+    (Just [])
 
 -- EXERCISE
 -- Look at the recursor for nats - foldNat. In there we replaced Nats constructors, with things.
 -- Think about how a recursor for tuples should look like, and implement it.
+
+-- foldNat :: (a -> a) -> a -> Nat -> a
+-- foldNat _ nv Zero = nv
+-- foldNat f nv (Suc n) = f $ foldNat f nv n
+
 -- foldTuple :: ?
 -- foldTuple = undefined
 
@@ -332,7 +356,7 @@ validateList = undefined
 -- >>> iterateToNat (\f x -> f (f (f x)))
 -- Suc (Suc (Suc Zero))
 iterateToNat :: (forall a. (a -> a) -> a -> a) -> Nat
-iterateToNat f = undefined
+iterateToNat f = f Suc Zero
 
 natToIterate :: Nat -> (a -> a) -> a -> a
 natToIterate n f v = foldNat f v n

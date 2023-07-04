@@ -12,7 +12,7 @@
 module Lazy where
 
 import Debug.Trace
-import Prelude hiding (foldl, repeat, scanl)
+import Prelude hiding (foldl, repeat, scanl, take, cycle)
 
 -- hof: https://www.tweag.io/blog/2022-12-01-higherorderness-is-interaction/
 
@@ -111,12 +111,24 @@ boo = foldl' go (0, 0)
 -- foldl'
 -- mention deepseq
 
+take :: Integer -> [a] -> [a]
+take _ [] = []
+take 0 _ = []
+take n (x : xs) = x : take (n - 1) xs
+
+skip :: Integer -> [a] -> [a]
+skip 0 xs = xs
+skip _ [] = []
+skip n lst@(_ : xs)
+  | n < 0 = skip (-n) lst
+  | otherwise = skip (n - 1) xs
+
 -- EXERCISE
 -- Infinitely repeat a value
 -- >>> take 4 $ repeat 'a'
 -- "aaaa"
 repeat :: a -> [a]
-repeat = undefined
+repeat x = x : repeat x
 
 -- EXERCISE
 -- A list of all the natural numbers.
@@ -124,7 +136,7 @@ repeat = undefined
 -- >>> take 10 nats
 -- [0,1,2,3,4,5,6,7,8,9]
 nats :: [Integer]
-nats = undefined
+nats = 0 : map (1 +) nats
 
 -- EXERCISE
 -- Generate an infinite list of numbers, starting with the given number, with the given interval between each numbe.
@@ -138,7 +150,7 @@ nats = undefined
 -- >>> take 10 $ fromThen 0 (-10)
 -- [0,-10,-20,-30,-40,-50,-60,-70,-80,-90]
 fromThen :: Integer -> Integer -> [Integer]
-fromThen = undefined
+fromThen n d = n : map (d +) (fromThen n d)
 
 -- EXERCISE
 -- Implement a list of all the factorial numbers
@@ -148,9 +160,9 @@ fromThen = undefined
 -- >>> take 10 facts
 -- [1,1,2,6,24,120,720,5040,40320,362880]
 facts :: [Integer]
-facts = undefined
+facts = go 1 1
   where
-    go = undefined
+    go x n = x : go (x * n) (n + 1)
 
 -- EXERCISE
 -- "Caching foldl"
@@ -161,7 +173,10 @@ facts = undefined
 -- >>> scanl (+) 0 [1..10]
 -- [1,3,6,10,15,21,28,36,45,55,55]
 scanl :: (b -> a -> b) -> b -> [a] -> [b]
-scanl = undefined
+scanl _ _ [] = []
+scanl f nv (x : xs) =
+  let acc = f nv x
+   in acc : scanl f acc xs
 
 -- EXERCISE
 -- Use scanl to implement facts.
@@ -169,7 +184,7 @@ scanl = undefined
 -- >>> take 10 factsScanl
 -- [1,2,6,24,120,720,5040,40320,362880,3628800]
 factsScanl :: [Integer]
-factsScanl = undefined
+factsScanl = 1 : scanl (*) 1 (tail nats)
 
 -- EXERCISE
 -- Implement a list of all the fibonacci numbers.
@@ -183,7 +198,7 @@ factsScanl = undefined
 -- >>> take 10 fibs
 -- [1,1,2,3,5,8,13,21,34,55]
 fibs :: [Integer]
-fibs = undefined
+fibs = 1 : 1 : zipWith (+) fibs (tail fibs)
 
 -- EXERCISE
 -- Idea:
@@ -200,17 +215,19 @@ fibs = undefined
 -- >>> take 20 $ primes
 -- [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71]
 primes :: [Integer]
-primes = undefined
+primes = eratosthenes $ skip 2 nats
   where
     eratosthenes :: [Integer] -> [Integer]
-    eratosthenes = undefined
+    eratosthenes [] = []
+    eratosthenes (x : xs) = x : eratosthenes (filter (\n -> n `mod` x /= 0) xs)
 
 -- EXERCISE
 -- Infinitely repeat a list
 -- >>> take 7 $ cycle [1,2,3]
 -- [1,2,3,1,2,3,1]
 cycle :: [a] -> [a]
-cycle = undefined
+cycle [] = []
+cycle xs = go where go = xs ++ go
 
 -- Let's consider the following problem:
 -- We have a "circle" of n people. We have an integer k.
@@ -251,7 +268,11 @@ jos = undefined
     -- ask me if you're confused
     -- this function exists in base but with Bool instead of Maybe
     untilJust :: (a -> Maybe b) -> (a -> a) -> a -> b
-    untilJust = undefined
+    untilJust f next = helper 
+      where
+        helper x = case f x of 
+          Just y -> y
+          Nothing -> helper (next x)
     -- the procedure which actually does the removal
     go :: [Integer] -> [Integer]
     go = undefined

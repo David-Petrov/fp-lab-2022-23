@@ -123,12 +123,15 @@ parseAnimal = undefined
 -- >>> parse (satisfy isDigit) "a"
 -- Nothing
 satisfy :: (Char -> Bool) -> Parser Char
-satisfy = undefined
-
+satisfy p = do
+  c <- nom
+  if p c
+    then succeed c
+    else parseFailure
 -- EXERCISE
 -- run the given parser n times, i.e. parseNChar n == times n nom
 times :: Int -> Parser a -> Parser [a]
-times = undefined
+times n p = sequenceA $ replicate n p
 
 -- EXERCISE
 -- Parse a single digit. You'll need the ord and fromIntegral functions here.
@@ -146,7 +149,9 @@ times = undefined
 -- >>> parse digitParser "a"
 -- Nothing
 digitParser :: Parser Integer
-digitParser = undefined
+digitParser = do
+  ch <- satisfy isDigit
+  succeed $ fromIntegral $ ord ch - ord '0'
 
 -- EXERCISE
 -- Convert a list of integers, assuming they are digits, to a number.
@@ -155,7 +160,7 @@ digitParser = undefined
 -- >>> digitListToInteger [0, 1, 2, 3]
 -- 123
 digitListToInteger :: [Integer] -> Integer
-digitListToInteger = undefined
+digitListToInteger = foldl (\acc x -> 10 * acc + x) 0
 
 -- EXERCISE
 -- Combine digitParser and digitListToInteger to produce a parser for numbers.
@@ -167,7 +172,7 @@ digitListToInteger = undefined
 -- >>> parse numberParser "21303"
 -- Just 21303
 numberParser :: Parser Integer
-numberParser = undefined
+numberParser = digitListToInteger <$> many digitParser
 
 -- EXERCISE
 -- Parse a lot of as seperated by bs

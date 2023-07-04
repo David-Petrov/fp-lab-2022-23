@@ -9,6 +9,9 @@
 {-# OPTIONS_GHC -fwarn-name-shadowing #-}
 -- use all your pattern matches!
 {-# OPTIONS_GHC -fwarn-unused-matches #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Effects where
 
@@ -154,17 +157,17 @@ newtype State s a = MkState (s -> (s, a))
 -- EXERCISE
 -- Convenient synonym to flip the arguments to runState, so that you can specify the initial state first.
 usingState :: s -> State s a -> (s, a)
-usingState = undefined
+usingState initialState (MkState f) = f initialState
 
 -- EXERCISE
 -- Convenient way to run a state action, only returning the final value and discarding the state.
 evalUsingState :: s -> State s a -> a
-evalUsingState = undefined
+evalUsingState s = snd . usingState s
 
 -- EXERCISE
 -- Convenient way to run a state action, only returning the final state and discarding the value.
 execUsingState :: s -> State s a -> s
-execUsingState = undefined
+execUsingState s = fst . usingState s
 
 -- EXERCISE
 -- Below are a few different "primitive" state actions.
@@ -176,21 +179,23 @@ execUsingState = undefined
 -- >>> evalUsingState 5 get
 -- 5
 get :: State s s
-get = undefined
+get = MkState $ \s -> (s, s)
 
 -- EXERCISE
 -- Replace the current state
 -- >>> execUsingState 5 $ put 13
 -- 13
 put :: s -> State s ()
-put = undefined
+put state = MkState $ const (state, ())
 
 -- EXERCISE
 -- Modify the current state
--- >>> execUsingState 5 $ modify (*13)
--- 65
+-- >>> execUsingState 23 $ modify (*3)
+-- Prelude.undefined
 modify :: (s -> s) -> State s ()
-modify = undefined
+modify f = do
+  state <- get
+  put $ f state
 
 -- EXERCISE
 -- > bracketState before after act
@@ -201,7 +206,7 @@ modify = undefined
 -- >>> usingState 5 $ bracketState (modify (+13)) (modify (subtract 13)) get
 -- (5,18)
 bracketState :: State s () -> State s () -> State s a -> State s a
-bracketState = undefined
+bracketState before after act = undefined
 
 -- EXERCISE
 -- Make State an instance of Functor
@@ -210,11 +215,14 @@ bracketState = undefined
 -- (8,13)
 -- >>> usingState 8 $ fmap (const "ignoring the () that put returns") $ put 13
 -- (13,"ignoring the () that put returns")
+
 -- HINT:
 -- Use let bindings
 instance Functor (State s) where
   fmap :: (a -> b) -> State s a -> State s b
-  fmap = undefined
+  fmap f state = MkState $ \initState ->
+    let (newState, val) = usingState initState state
+     in (newState, f val)
 
 -- EXERCISE
 -- Make State an instance of Applicative
@@ -232,20 +240,22 @@ instance Functor (State s) where
 instance Applicative (State s) where
   -- We want the action that uses *no* state, and simply returns the given value.
   pure :: a -> State s a
-  pure = undefined
+  pure v = MkState (, v)
 
   -- We want to sequence these actions left-to-right, i.e. first run the first action, then use its state for the second action,
   -- then combine their results using the provided function.
   -- HINT: use let bindings
   liftA2 :: (a -> b -> c) -> State s a -> State s b -> State s c
-  liftA2 = undefined
+  liftA2 fabc sa sb = MkState $ \initState ->
+    let (midState, fbc) = usingState initState $ fabc <$> sa
+     in usingState midState $ fbc <$> sb
 
 -- EXERCISE
 -- Some very convenient Applicative operators
 
 -- Execute two actions, ignoring the result of the second one.
 (<*) :: Applicative f => f a -> f b -> f a
-(<*) = undefined
+(<*) = liftA2 const
 
 infixl 4 <*
 
@@ -256,14 +266,17 @@ infixl 4 <*
 -- >>> Nothing *> Just 5
 -- Nothing
 (*>) :: Applicative f => f a -> f b -> f b
-(*>) = undefined
+(*>) = liftA2 $ const id
 
 infixl 4 *>
 
 instance Monad (State s) where
   (>>=) :: State s a -> (a -> State s b) -> State s b
   -- HINT: use let bindings
-  (>>=) = undefined
+  (>>=) (MkState f) g = MkState $ \initState -> 
+    let (midState, val) = f initState
+     in usingState midState $ g val
+
 
 -- EXERCISE
 -- An effectful "map" - notice the similarities with
@@ -280,8 +293,8 @@ instance Monad (State s) where
 -- 3
 -- >>> execUsingState 0 $ traverse (\x -> modify (+x)) [1,2,3]
 -- 6
-traverse :: Applicative m => (a -> m b) -> [a] -> m [b]
-traverse = undefined
+traverse :: forall a b m. Applicative m => (a -> m b) -> [a] -> m [b]
+traverse f = foldr (liftA2 (:) . f) $ pure []
 
 -- EXERCISE
 -- We'll be implementing an interpreter for a small language with two parts - a pure *expression* language and imperative top level statements to execute, top-to-bottom.

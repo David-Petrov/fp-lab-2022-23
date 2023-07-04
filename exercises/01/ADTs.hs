@@ -13,6 +13,7 @@
 -- warnings
 
 module ADTs where
+import Data.Function (on)
 
 -- TODO: talk about
 
@@ -183,7 +184,11 @@ addNat (Succ n) m =
 -- define what the "next" throw you can do is in the "usual" ordering of RPS
 -- i.e. @next x@ should be the throw that beats x
 next :: RPS -> RPS
-next = undefined
+next Rock = Paper
+next Scissors = Rock
+next Paper = Scissors
+
+-- >>> next Rock
 
 -- TASK
 -- define what it means for two RPS values to be equal
@@ -197,7 +202,10 @@ next = undefined
 -- >>> eqRPS Rock Paper
 -- False
 eqRPS :: RPS -> RPS -> Bool
-eqRPS = undefined
+eqRPS Rock Rock = True
+eqRPS Paper Paper = True
+eqRPS Scissors Scissors = True
+eqRPS _ _ = False
 
 -- TASK
 -- define a shorter version of beats by uisng next and eqRPS
@@ -209,7 +217,7 @@ eqRPS = undefined
 -- >>> Paper `beats'` Scissors
 -- False
 beats' :: RPS -> RPS -> Bool
-beats' = undefined
+beats' x y = eqRPS x (next y)
 
 -- TASK
 -- Your task is to model a few of the pieces of the game of Belote
@@ -217,48 +225,128 @@ beats' = undefined
 -- * implement a data type for Ranks (7 8 9 10 J etc)
 
 data Rank
-  deriving (Show)
-
+  = Seven
+  | Eight
+  | Nine
+  | Ten
+  | J
+  | Q
+  | K
+  | A
+  deriving (Show, Eq, Bounded, Enum)
 -- * implement a data type for Suits
 
 data Suit
-  deriving (Show)
-
+  = Clubs
+  | Diamonds
+  | Hearts
+  | Spades
+  deriving (Show, Eq, Bounded, Enum)
 -- * implement a data type for a Card
-
-data Card
-  deriving (Show)
-
+data Card = MkCard Rank Suit
+  deriving Show
 -- * implement a data type for Contracts (all trump, no trump etc)
 
 data Contract
+  = SuitContract Suit
+  | ConNoTrump
+  | ConAllTrump
   deriving (Show)
 
 -- Given a Card and a Contract, implement a check whether the card is of a trump suit
 isTrump :: Contract -> Card -> Bool
-isTrump = undefined
+isTrump ConAllTrump _ = True
+isTrump (SuitContract contractSuit) (MkCard _ cardSuit) = contractSuit == cardSuit
+isTrump _ _ = False
+
 
 -- Given a Card and a Contract, implement what the "power" of that card is as an Integer
 -- When played, a card with higher power will "beat" one with lower power
 -- You can use whatever numbers you like, as long as they reflect the rules of the game.
 cardPower :: Contract -> Card -> Integer
-cardPower = undefined
+cardPower contract (MkCard rank suit) = 
+  case rank of
+    Seven -> -1
+    Eight -> 0
+    Nine -> if trump then 14 else 1
+    Ten -> 10
+    J -> if trump then 20 else 2
+    Q -> 3
+    K -> 4
+    A -> 11
+  where 
+    trump = isTrump contract (MkCard rank suit)
+
+    
 
 -- Given two Cards and a Contract, return the Card that would "win" (according to their power)
 -- when playing under the given Contract
 -- Assume that the first matched card is played first.
+
+-- Naive version for sanity check
+fight' :: Contract -> Card -> Card -> Card
+fight' contract c1@(MkCard _ s1) c2@(MkCard _ s2)
+  | s1 == s2 = strongerCardWithoutOvertrumping
+  | (nimpl `on` contractTrump) c1 c2 = c1
+  | (nimpl `on` contractTrump) c2 c1 = c2
+  | ((==) `on` contractTrump) c1 c2 = c1
+  | otherwise = error "IMPOSSIBLE! But the GHC is not smart enough."
+  where
+    contractPower = cardPower contract
+    contractTrump = isTrump contract
+    nimpl b1 b2 = b1 && not b2
+    strongerCardWithoutOvertrumping = 
+      if contractPower c1 > contractPower c2 
+      then c1 
+      else c2
+
+-- Elegant version, checked for correctness.
 fight :: Contract -> Card -> Card -> Card
-fight = undefined
+fight contract c1@(MkCard _ s1) c2@(MkCard _ s2)
+  | s1 == s2 = if contractPower c1 > contractPower c2 then c1 else c2
+  | (nimpl `on` contractTrump) c2 c1 = c2
+  | otherwise = c1
+  where
+    contractPower = cardPower contract
+    contractTrump = isTrump contract
+    nimpl b1 b2 = b1 && not b2
+
+-- Assure that the function above is total!!!!!!!!! IT IS!!!!!!!!!
+allRanks :: [Rank]
+allRanks = [minBound..maxBound]
+
+allSuits :: [Suit]
+allSuits = [minBound..maxBound]
+
+allCards :: [Card]
+allCards = MkCard <$> allRanks <*> allSuits
+--allCards = [MkCard rank suit | rank <- allRanks, suit <- allSuits]
+
+allContracts :: [Contract]
+allContracts = map SuitContract allSuits ++ [ConAllTrump, ConNoTrump]
+
+allContractCardTuples :: [(Contract, Card, Card)]
+allContractCardTuples = [(contract, card1, card2) | contract <- allContracts, card1 <- allCards, card2 <- allCards]
+
+results :: [Card]
+results = map (uncurry3 fight) allContractCardTuples
+  where uncurry3 f (a, b, c) = f a b c
+
+-- End of assuring.
 
 -- TASK
 -- multiply two @Nat@s recursively, much like we did with Ints last time
 -- EXAMPLES
--- >>> multNat Zero (Suc (Suc (Suc Zero)))
--- Zero
--- >>> multNat (integerToNat 2) (integerToNat 3)
--- Suc (Suc (Suc (Suc (Suc (Suc Zero)))))
+-- >>> natToInteger $ multNat Zero (Succ (Succ (Succ Zero)))
+-- 0
+-- >>> natToInteger $ multNat (integerToNat 2) (integerToNat 3)
+-- 6
+-- >>> natToInteger $ multNat (integerToNat 20) (integerToNat 7)
+-- 140
 multNat :: Nat -> Nat -> Nat
-multNat = undefined
+multNat Zero _ = Zero
+multNat _ Zero = Zero
+multNat (Succ x) y = addNat (multNat x y) y
 
 -- TASK
 -- calculate the larger of two @Nat@s recursively
@@ -270,7 +358,9 @@ multNat = undefined
 -- >>> maxNat (Suc (Suc Zero)) (Suc (Suc (Suc (Suc Zero))))
 -- Suc (Suc (Suc (Suc Zero)))
 maxNat :: Nat -> Nat -> Nat
-maxNat = undefined
+maxNat Zero y = y
+maxNat x Zero = x
+maxNat (Succ x) (Succ y) = Succ $ maxNat x y
 
 -- TASK
 -- Ordering is a datatype that is made to mean "the result of a comparison" or "the ordering between two things"
@@ -286,7 +376,10 @@ maxNat = undefined
 -- >>> compareNat (Suc Zero) Zero
 -- GT
 compareNat :: Nat -> Nat -> Ordering
-compareNat = undefined
+compareNat Zero Zero = EQ
+compareNat Zero _ = LT
+compareNat _ Zero = GT
+compareNat (Succ x) (Succ y) = compareNat x y
 
 -- README
 -- the "syntax" for a very basic "calculator" datatype
